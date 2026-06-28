@@ -4,8 +4,6 @@
 
 Roots is an iOS-style web app that compares the real cost of raising a family across 12 cities — not just rent and salaries, but what's actually left after taxes, childcare, healthcare, and housing, and how that compounds into wealth over time.
 
-👉 **Live app:** https://YOUR-USERNAME.github.io/roots/
-
 ## Why it exists
 
 "City A pays more" is rarely the real answer. A higher salary can vanish into taxes, childcare, and rent — while a lower-paying city with free healthcare and subsidized daycare quietly leaves you better off. Roots models the whole picture so the comparison is honest.
