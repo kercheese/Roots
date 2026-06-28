@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<title>Roots</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg0:#07070c;--bg1:#11111c;--bg2:#1a1426;
+  --glass:rgba(26,26,40,0.82);--glass-hi:rgba(60,58,90,0.5);--glass-line:rgba(255,255,255,0.14);
+  --ink:#f7f6fb;--ink2:#d2d0e0;--ink3:#9d9bb2;
+  --a:#6b8cff;--a2:#4f6bff;--b:#36e0c8;--b2:#15b9a6;
+  --good:#37e09a;--bad:#ff6b6b;--gold:#ffd479;
+  --hi:#37e09a;--med:#ffd479;--lo:#ff9d6b;
+  --safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,"SF Pro Display","SF Pro Text",system-ui,sans-serif;
+  color:var(--ink);
+  background:var(--bg0);
+  position:fixed;inset:0;
+  -webkit-font-smoothing:antialiased;
+}
+/* ambient animated aurora behind glass */
+.aurora{position:fixed;inset:-20%;z-index:0;filter:blur(80px);opacity:.4;pointer-events:none}
+.aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen;animation:drift 18s ease-in-out infinite}
+.aurora i:nth-child(1){width:60vw;height:60vw;left:-10vw;top:-10vh;background:radial-gradient(circle,#3b3bff,transparent 60%)}
+.aurora i:nth-child(2){width:55vw;height:55vw;right:-15vw;top:5vh;background:radial-gradient(circle,#15b9a6,transparent 60%);animation-delay:-6s}
+.aurora i:nth-child(3){width:50vw;height:50vw;left:10vw;bottom:-15vh;background:radial-gradient(circle,#a64bff,transparent 60%);animation-delay:-11s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(6vw,4vh) scale(1.12)}66%{transform:translate(-5vw,-3vh) scale(.95)}}
+@media(prefers-reduced-motion:reduce){.aurora i{animation:none}}
+.scrim{position:fixed;inset:0;z-index:0;background:radial-gradient(120% 80% at 50% 0%,rgba(7,7,12,.55),rgba(7,7,12,.82));pointer-events:none}
+
+.app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+
+/* nav header */
+.nav{padding:calc(var(--safe-t) + 14px) 22px 8px;flex:0 0 auto}
+.nav .eyebrow{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--ink3);text-transform:uppercase}
+.nav h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:2px;line-height:1.05}
+
+/* scroll area */
+.scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:8px 16px calc(var(--safe-b) + 110px)}
+.scroll::-webkit-scrollbar{display:none}
+.screen{display:none;animation:fade .45s cubic-bezier(.2,.8,.2,1)}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+
+/* glass card */
+.glass{
+  background:var(--glass);
+  backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);
+  border:1px solid var(--glass-line);
+  border-radius:26px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.14);
+  padding:20px;margin-bottom:14px;
+}
+.glass.tight{padding:16px}
+.cardlabel{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px}
+
+/* hero result */
+.hero{text-align:center;padding:26px 20px 22px;position:relative;overflow:hidden}
+.hero .winnerchip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:7px 15px;border-radius:30px;background:rgba(255,255,255,.1);border:1px solid var(--glass-line);margin-bottom:18px}
+.hero .winnerchip .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+.hero .amount{font-size:54px;font-weight:850;letter-spacing:-.035em;line-height:.95;background:linear-gradient(135deg,#ffffff,#e3e1f2);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .amount.tiny{font-size:40px}
+.hero .amountsub{font-size:14.5px;color:var(--ink2);margin-top:8px;font-weight:500;padding:0 10px}
+.hero .horizon{font-size:12px;color:var(--ink3);margin-top:4px}
+
+/* dual mini cards */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.mini{padding:16px;border-radius:22px;position:relative;overflow:hidden}
+.mini.a{background:linear-gradient(160deg,rgba(107,140,255,.22),rgba(107,140,255,.05));border:1px solid rgba(107,140,255,.32)}
+.mini.b{background:linear-gradient(160deg,rgba(54,224,200,.2),rgba(54,224,200,.04));border:1px solid rgba(54,224,200,.32)}
+.mini .city{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.mini.a .city{color:#b8c5ff}.mini.b .city{color:#8df0de}
+.mini .cur{font-size:10.5px;color:var(--ink3);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.mini .disp{font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mini .displ{font-size:10.5px;color:var(--ink3);margin-top:1px}
+.mini .row{display:flex;justify-content:space-between;font-size:12px;margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:var(--ink3)}
+.mini .row b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* control rows */
+.ctl{margin-bottom:17px}
+.ctl:last-child{margin-bottom:2px}
+.ctl .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:9px}
+.ctl .lab .v{font-size:13px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.selrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.glasssel{position:relative}
+.glasssel select{
+  width:100%;appearance:none;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);
+  padding:13px 36px 13px 14px;border-radius:16px;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1px solid var(--glass-line);
+}
+.glasssel::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:translateY(-65%) rotate(45deg);pointer-events:none}
+.glasssel.a select{box-shadow:inset 0 0 0 1px rgba(107,140,255,.4)}
+.glasssel.b select{box-shadow:inset 0 0 0 1px rgba(54,224,200,.4)}
+select option{background:#1a1426;color:#fff}
+
+/* segmented */
+.seg{display:flex;gap:4px;background:rgba(0,0,0,.28);border:1px solid var(--glass-line);border-radius:16px;padding:4px}
+.seg.col{flex-direction:column}
+.seg button{flex:1;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--ink2);background:transparent;border:none;padding:11px 6px;border-radius:12px;cursor:pointer;transition:.3s cubic-bezier(.2,.8,.2,1)}
+.seg button.on{background:linear-gradient(160deg,rgba(255,255,255,.92),rgba(225,228,255,.82));color:#1a1426;box-shadow:0 4px 14px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.8)}
+
+/* slider */
+input[type=range]{-webkit-appearance:none;width:100%;height:30px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:8px;background:linear-gradient(90deg,var(--a),var(--b))}
+input[type=range]::-moz-range-track{height:8px;border-radius:8px;background:linear-gradient(90deg,var(--a),var(--b))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.05);border:none}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:none;box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.hintline{font-size:11.5px;color:var(--ink3);margin-top:8px;line-height:1.45}
+
+/* chart */
+.chart-wrap{position:relative;height:280px;margin-top:4px}
+.chart-wrap.tall{height:320px}
+
+/* ledger */
+.led{width:100%;border-collapse:collapse;font-size:13.5px}
+.led td{padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.07)}
+.led td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.led tr.s td{color:var(--ink2);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding-top:14px;border-bottom:none}
+.led tr.t td{font-weight:800;font-size:15px;border-top:1.5px solid rgba(255,255,255,.25);border-bottom:none;padding-top:11px}
+.led td.lab{color:var(--ink2)}
+.cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:6px;vertical-align:middle}
+.cdot.hi{background:var(--hi)}.cdot.med{background:var(--med)}.cdot.lo{background:var(--lo)}
+
+/* sources */
+.src p{font-size:13.5px;color:var(--ink2);line-height:1.55;margin-bottom:13px}
+.src p:last-child{margin-bottom:0}
+.src p b{color:var(--ink);font-weight:700}
+.conflegend{display:flex;flex-direction:column;gap:9px;margin-bottom:4px}
+.conflegend div{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2)}
+
+/* tab bar — floating liquid glass */
+.tabbar{
+  position:absolute;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--safe-b) + 16px);
+  width:calc(100% - 40px);max-width:440px;
+  display:flex;gap:4px;padding:7px;z-index:20;
+  background:rgba(22,22,34,.6);
+  backdrop-filter:blur(34px) saturate(200%);-webkit-backdrop-filter:blur(34px) saturate(200%);
+  border:1px solid var(--glass-line);border-radius:26px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.16);
+}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border:none;background:transparent;color:var(--ink3);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;border-radius:19px;transition:.35s cubic-bezier(.2,.8,.2,1)}
+.tab svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--ink)}
+.tab.on{background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.tab.on svg{stroke:url(#tabgrad)}
+
+.pill{display:inline-block;font-size:11px;font-weight:600;color:var(--ink3);background:rgba(255,255,255,.06);border:1px solid var(--glass-line);border-radius:20px;padding:5px 11px;margin:0 5px 6px 0}
+.pill b{color:var(--ink2)}
+.verdict{font-size:14.5px;line-height:1.5;color:var(--ink)}
+.verdict b{font-weight:700}
+</style>
+</head>
+<body>
+<div class="aurora"><i></i><i></i><i></i></div>
+<div class="scrim"></div>
+<svg width="0" height="0"><defs><linearGradient id="tabgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b8cff"/><stop offset="1" stop-color="#36e0c8"/></linearGradient></defs></svg>
+
+<div class="app">
+  <div class="nav">
+    <div class="eyebrow" id="navEyebrow">What your family keeps and builds, city by city</div>
+    <h1 id="navTitle">Roots</h1>
+  </div>
+
+  <div class="scroll" id="scroll">
+
+    <!-- ============ COMPARE ============ -->
+    <section class="screen on" id="s-compare">
+      <div class="glass hero">
+        <div class="winnerchip"><span class="dot" id="wDot"></span><span id="wChip">—</span></div>
+        <div class="amount" id="heroAmt">$0</div>
+        <div class="amountsub" id="heroSub">—</div>
+        <div class="horizon" id="heroHorizon"></div>
+      </div>
+
+      <div class="duo">
+        <div class="mini a">
+          <div class="city" id="cA">City A</div><div class="cur" id="curA">—</div>
+          <div class="disp" id="dispA">$0</div><div class="displ">disposable / yr</div>
+          <div class="row"><span>Eff. tax</span><b id="taxA">0%</b></div>
+          <div class="row"><span id="netLA">Take-home</span><b id="netA">$0</b></div>
+        </div>
+        <div class="mini b">
+          <div class="city" id="cB">City B</div><div class="cur" id="curB">—</div>
+          <div class="disp" id="dispB">$0</div><div class="displ">disposable / yr</div>
+          <div class="row"><span>Eff. tax</span><b id="taxB">0%</b></div>
+          <div class="row"><span id="netLB">Take-home</span><b id="netB">$0</b></div>
+        </div>
+      </div>
+
+      <div class="glass" style="padding:16px 18px">
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+      <div class="glass tight">
+        <div class="cardlabel">Quick start</div>
+        <div class="seg" id="presets">
+          <button data-p="newgrad">New grad</button>
+          <button data-p="youngfam">Young family</button>
+          <button data-p="established">Established</button>
+          <button data-p="preretire">Pre-retire</button>
+        </div>
+        <div class="hintline">One tap to a typical setup — then fine-tune anything below.</div>
+      </div>
+
+      <div class="glass">
+        <div class="cardlabel">Reading the money</div>
+        <div class="seg" id="view"><button data-v="nominal" class="on">Nominal USD</button><button data-v="ppp">Purchasing power</button></div>
+        <div class="hintline">Nominal = straight USD. Purchasing power adjusts for what a dollar actually buys in each city (OECD price levels).</div>
+      </div>
+
+      <div class="glass">
+        <div class="cardlabel">Cities</div>
+        <div class="selrow">
+          <div class="glasssel a"><select id="cityA"></select></div>
+          <div class="glasssel b"><select id="cityB"></select></div>
+        </div>
+      </div>
+
+      <div class="glass">
+        <div class="cardlabel">Household</div>
+        <div class="ctl">
+          <div class="lab">Career</div>
+          <div class="glasssel"><select id="career"></select></div>
+          <div class="hintline" id="careerHint"></div>
+        </div>
+        <div class="ctl">
+          <div class="lab">Reference income <span class="v" id="incV"></span></div>
+          <input type="range" id="income" min="60000" max="400000" step="5000">
+        </div>
+        <div class="ctl">
+          <div class="lab">Pay basis</div>
+          <div class="seg" id="basis">
+            <button data-v="local" class="on">Local market</button>
+            <button data-v="equal">Equal pay</button>
+          </div>
+          <div class="hintline">Local = the same job pays differently per city (realistic). Equal = identical pay everywhere (a thought experiment).</div>
+        </div>
+        <div class="ctl">
+          <div class="lab">Earners</div>
+          <div class="seg" id="earners">
+            <button data-v="dual" class="on">Two incomes</button>
+            <button data-v="single">One income</button>
+          </div>
+          <div class="hintline">Affects tax in splitting systems — France's quotient familial, Germany's Ehegattensplitting, US joint filing.</div>
+        </div>
+        <div class="ctl" style="margin-bottom:2px">
+          <div class="lab">Student loans / debt <span class="v" id="debtV">None</span></div>
+          <input type="range" id="debt" min="0" max="60000" step="1000">
+          <div class="hintline">Annual debt service (loans, car, etc.) — a real line for most young families.</div>
+        </div>
+      </div>
+
+      <div class="glass tight">
+        <button id="shareBtn" style="width:100%;font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--glass-line);border-radius:16px;padding:14px;cursor:pointer">Share this comparison</button>
+        <div class="hintline" style="text-align:center">Copies a link that reopens this exact setup.</div>
+      </div>
+
+      <div class="glass">
+        <div class="cardlabel">Children & care</div>
+        <div class="ctl">
+          <div class="lab">Children <span class="v" id="kidsV"></span></div>
+          <input type="range" id="kids" min="0" max="5" step="1">
+        </div>
+        <div class="ctl">
+          <div class="lab">Under age 3 <span class="v" id="u3V"></span></div>
+          <input type="range" id="under3" min="0" max="5" step="1">
+          <div class="hintline">Only under-3s need paid daycare. Ages 3+ are free everywhere (pre-K / maternelle / funded hours).</div>
+        </div>
+      </div>
+
+      <div class="glass">
+        <div class="cardlabel">Housing & health</div>
+        <div class="ctl">
+          <div class="lab">Tenure</div>
+          <div class="seg" id="tenure"><button data-v="rent" class="on">Rent</button><button data-v="buy">Buy</button></div>
+        </div>
+        <div class="ctl">
+          <div class="lab">Home size <span class="v" id="sizeV"></span></div>
+          <input type="range" id="size" min="50" max="200" step="5">
+          <div class="hintline" id="sizeNote"></div>
+          <div class="hintline" id="rentSrc"></div>
+        </div>
+        <div class="ctl">
+          <div class="lab">Health accounting</div>
+          <div class="seg" id="health"><button data-v="expected" class="on">Expected</button><button data-v="normal">Normal</button><button data-v="bad">Bad year</button></div>
+          <div class="hintline">Expected = risk-weighted typical + rare costly year. This is where the US vs Europe gap really lives.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PROJECT ============ -->
+    <section class="screen" id="s-project">
+      <div class="glass">
+        <div class="cardlabel">Cumulative wealth built</div>
+        <div class="chart-wrap tall"><canvas id="proj"></canvas></div>
+      </div>
+      <div class="glass tight">
+        <div class="ctl" style="margin-bottom:6px">
+          <div class="lab">Time horizon <span class="v" id="yearsV"></span></div>
+          <input type="range" id="years" min="1" max="20" step="1">
+        </div>
+        <div class="hintline">Projects ~2.5% cost inflation, ~3% pay growth, kids aging out of daycare, plus home equity if buying. Where the lines cross is the real answer.</div>
+      </div>
+      <div class="glass">
+        <div class="cardlabel">Year-1 ledger · USD <span style="text-transform:none;letter-spacing:0;font-weight:500">— dot = confidence</span></div>
+        <table class="led" id="ledger"></table>
+      </div>
+      <div class="glass tight">
+        <div class="cardlabel">Show employer-side total comp</div>
+        <div class="seg" id="totalcomp"><button data-v="off" class="on">Off</button><button data-v="on">On</button></div>
+        <div class="hintline">Adds the compensation you never see on a payslip: French employer charges (~43%), US employer health (~$20k) and pension match. Changes take-home shown in the ledger.</div>
+      </div>
+    </section>
+
+    <!-- ============ SOURCES ============ -->
+    <section class="screen src" id="s-sources">
+      <div class="glass">
+        <div class="cardlabel">Data confidence</div>
+        <div class="conflegend">
+          <div><span class="cdot hi"></span> <b style="color:var(--ink)">&nbsp;Verified</b> &nbsp;— primary or official source</div>
+          <div><span class="cdot med"></span> <b style="color:var(--ink)">&nbsp;Triangulated</b> &nbsp;— several independent sources</div>
+          <div><span class="cdot lo"></span> <b style="color:var(--ink)">&nbsp;Estimate</b> &nbsp;— representative average</div>
+        </div>
+      </div>
+      <div class="glass">
+        <div class="cardlabel">Live exchange rates</div>
+        <span class="pill"><b>€1</b> = $1.14</span><span class="pill"><b>£1</b> = $1.27</span><span class="pill"><b>C$1</b> = $0.73</span><span class="pill"><b>A$1</b> = $0.66</span><span class="pill"><b>S$1</b> = $0.74</span><span class="pill"><b>¥100</b> = $0.67</span>
+        <div class="hintline" style="margin-top:8px" id="fxNote">ECB / market reference, June 2026 (updates live on load when available).</div>
+      </div>
+      <div class="glass">
+        <div class="cardlabel">Sources & methodology</div>
+        <p><b>Rent (3-bed, mid) — verified.</b> NYC StreetEasy (3+BR median $4,995; outer mid $4,800); Chicago RentCafe/Yardi ($3,768); Paris OLAP official observatory (€26.6/m² → T4 €2,000); Toronto TRREB (C$3,757); London ONS PIPR by borough (£2,500). Buy mode adds mortgage + property tax + ~3%/yr appreciation as equity.</p>
+        <p><b>Childcare under 3 — triangulated.</b> NYC ~$20k (Winnie/ChildCarePath); Chicago ~$16.5k; Paris ~€6k (CAF scale); Toronto ~C$5.5k (City of Toronto / CWELCC $22-a-day cap); London ~£12k net (Coram 2026 + funded hours).</p>
+        <p><b>Effective tax.</b> Real 2025–26 brackets plus the deductions people take: US standard deduction + child tax credit + dependent-care FSA; France quotient familial + 10% frais; Canada BPA + CPP/EI + child benefit; UK personal allowance + pension salary-sacrifice. Output is the rate actually paid, not the headline.</p>
+        <p><b>Employer-side comp.</b> France employer social charges ≈ 43% of gross (OECD Taxing Wages 2026; URSSAF). US employer health ≈ $20k/yr family (KFF 2025) + 401(k). UK employer NI ~13.8%. Real compensation, off-payslip.</p>
+        <p><b>Health as expected value.</b> ~88% normal year + ~12% high-cost year, probability-weighted (US: KFF 2025 premiums/deductible/OOP-max; Europe: Sécu+mutuelle / OHIP / NHS, low tail).</p>
+        <p><b>Coverage & taxes.</b> 12 cities across 8 tax systems: US (IRS 2025 + state: NY, IL, and no-tax TX/FL/WA per Tax Foundation), France (DGFiP + quotient familial), Germany (§32a EStG + ~20% social, Ehegattensplitting), Canada (CRA + Ontario/BC), UK (HMRC + NI), Japan (national + 10% local, OECD/PwC), Australia (ATO + 2% Medicare), Singapore (IRAS + CPF). Effective rates, not headline.</p>
+        <p><b>Salaries.</b> levels.fyi (tech), US BLS OES & Canada Job Bank (government), cross-checked vs StatCan median household income. Per-city multipliers reflect real same-occupation gaps.</p>
+        <p><b>Purchasing power.</b> OECD comparative price levels (US=100) convert nominal disposable income into what it actually buys locally.</p>
+        <p style="color:var(--ink3)"><b>Limitations.</b> Rounded illustrative estimates, not advice. Groceries, transport and insurance remain representative averages (estimate-grade). Inflation, pay growth and appreciation use steady assumed rates.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- TAB BAR -->
+  <nav class="tabbar">
+    <button class="tab on" data-s="compare" data-title="Roots" data-eye="What your family keeps and builds, city by city">
+      <svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Compare</button>
+    <button class="tab" data-s="project" data-title="Projection" data-eye="Wealth built over time">
+      <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6"/></svg>Project</button>
+    <button class="tab" data-s="sources" data-title="Sources" data-eye="Where the numbers come from">
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6zM15 3v5h5M9 13h6M9 17h6"/></svg>Sources</button>
+  </nav>
+</div>
+
+<script>
+let FX={USD:1,EUR:1.14,GBP:1.27,CAD:0.73,AUD:0.66,JPY:0.0067,SGD:0.74};
+const FX_DATE="ECB/market reference, Jun 2026";
+/* ppp = local price level index (US=100). Higher = costlier for same nominal $, so PPP-adjusted disposable = nominal*100/ppp. OECD PPP 2025. */
+const CITIES={
+  nyc:{name:"New York",cc:"US",cur:"USD",mult:1.00,state:"NY",ppp:108,
+    house:[45000,57600,96000],grocPP:3100,healthN:9000,healthB:17000,cc3:20000,after:1600,transport:5400,ins:1900,
+    priceToRent:22,propTax:0.013,appr:0.035,empHealth:20000,empPct:0.0765,
+    rentSrc:"NYC StreetEasy 3+BR median $4,995/mo; outer-borough mid $4,800."},
+  chicago:{name:"Chicago",cc:"US",cur:"USD",mult:0.82,state:"IL",ppp:96,
+    house:[33600,45200,60000],grocPP:2880,healthN:9000,healthB:16500,cc3:16500,after:1200,transport:6000,ins:2300,
+    priceToRent:16,propTax:0.021,appr:0.03,empHealth:20000,empPct:0.0765,
+    rentSrc:"Chicago RentCafe/Yardi 3-bed avg $3,768/mo."},
+  austin:{name:"Austin",cc:"US",cur:"USD",mult:0.90,state:"TX",ppp:97,
+    house:[28800,38400,54000],grocPP:2750,healthN:9000,healthB:16500,cc3:15000,after:1100,transport:6500,ins:2400,
+    priceToRent:17,propTax:0.018,appr:0.035,empHealth:20000,empPct:0.0765,
+    rentSrc:"Austin Zillow/RentCafe 3-bed ~$2,600–3,200/mo; no state income tax."},
+  miami:{name:"Miami",cc:"US",cur:"USD",mult:0.85,state:"FL",ppp:101,
+    house:[39600,50400,72000],grocPP:2950,healthN:9000,healthB:16500,cc3:15500,after:1200,transport:5800,ins:3200,
+    priceToRent:19,propTax:0.011,appr:0.04,empHealth:20000,empPct:0.0765,
+    rentSrc:"Miami RentCafe 3-bed ~$3,300–4,200/mo; no state income tax (high insurance)."},
+  paris:{name:"Paris",cc:"FR",cur:"EUR",mult:0.57,ppp:96,
+    house:[20400,24000,33600],grocPP:2640,healthN:1400,healthB:2400,cc3:6000,after:730,transport:1700,ins:300,
+    priceToRent:30,propTax:0.005,appr:0.02,empHealth:0,empPct:0.43,
+    rentSrc:"Paris OLAP official observatory €26.6/m², T4 → €2,000/mo."},
+  berlin:{name:"Berlin",cc:"DE",cur:"EUR",mult:0.62,ppp:94,
+    house:[18000,24000,33600],grocPP:2520,healthN:0,healthB:600,cc3:0,after:0,transport:1100,ins:1400,
+    priceToRent:32,propTax:0.004,appr:0.025,empHealth:0,empPct:0.21,
+    rentSrc:"Berlin: market 3-bed ~€1,500–2,000/mo (regulated). Public childcare ~free (Kita)."},
+  toronto:{name:"Toronto",cc:"CA",cur:"CAD",mult:0.72,ppp:99,
+    house:[36000,45100,54000],grocPP:3120,healthN:2500,healthB:3200,cc3:5500,after:1500,transport:4200,ins:1800,
+    priceToRent:28,propTax:0.006,appr:0.03,empHealth:3000,empPct:0.075,
+    rentSrc:"Toronto TRREB 3-bed condo avg C$3,757/mo."},
+  vancouver:{name:"Vancouver",cc:"CA",cur:"CAD",mult:0.70,state:"BC",ppp:102,
+    house:[39600,49200,60000],grocPP:3180,healthN:2500,healthB:3200,cc3:6000,after:1500,transport:4000,ins:1900,
+    priceToRent:34,propTax:0.004,appr:0.03,empHealth:3000,empPct:0.075,
+    rentSrc:"Vancouver rentals.ca 3-bed ~C$3,800–4,500/mo (highest in Canada)."},
+  london:{name:"London",cc:"UK",cur:"GBP",mult:0.74,ppp:103,
+    house:[24000,30000,42000],grocPP:2640,healthN:1200,healthB:2000,cc3:12000,after:1500,transport:3000,ins:400,
+    priceToRent:26,propTax:0.004,appr:0.025,empHealth:0,empPct:0.138,
+    rentSrc:"London ONS PIPR 3-bed by borough, mid £2,500/mo."},
+  tokyo:{name:"Tokyo",cc:"JP",cur:"JPY",mult:0.60,ppp:85,
+    house:[2400000,3360000,5400000],grocPP:420000,healthN:200000,healthB:500000,cc3:600000,after:120000,transport:280000,ins:60000,
+    priceToRent:25,propTax:0.006,appr:0.01,empHealth:0,empPct:0.15,
+    rentSrc:"Tokyo 3LDK family flat ~¥200k–300k/mo; subsidized childcare by ward income."},
+  sydney:{name:"Sydney",cc:"AU",cur:"AUD",mult:0.78,ppp:106,
+    house:[42000,54000,72000],grocPP:4200,healthN:2000,healthB:3500,cc3:22000,after:2000,transport:3000,ins:2200,
+    priceToRent:32,propTax:0.003,appr:0.04,empHealth:0,empPct:0.12,
+    rentSrc:"Sydney Domain 3-bed house median ~A$900–1,100/wk; CCS-subsidized childcare."},
+  singapore:{name:"Singapore",cc:"SG",cur:"SGD",mult:0.85,ppp:99,
+    house:[42000,60000,96000],grocPP:3600,healthN:1500,healthB:4000,cc3:12000,after:3000,transport:1800,ins:1500,
+    priceToRent:24,propTax:0.01,appr:0.03,empHealth:0,empPct:0.17,
+    rentSrc:"Singapore condo 3-bed ~S$5,000–8,000/mo; gov childcare subsidies for residents."},
+};
+/* AREA: per-COUNTRY measurement unit + the floor area the verified MID rent (house[1]) corresponds to.
+   US/CA/AU/SG markets quote in sq ft; FR/DE/UK/JP in m². midSize = typical 3-bed family home.
+   slider range lets the user pick their real size; rent scales linearly from the verified anchor. */
+const AREA={
+  US:{unit:"sqft",midSize:1100,min:500,max:2500,step:50},
+  CA:{unit:"sqft",midSize:1000,min:500,max:2200,step:50},
+  AU:{unit:"sqft",midSize:1150,min:500,max:2500,step:50},
+  SG:{unit:"sqft",midSize:1000,min:450,max:2000,step:50},
+  FR:{unit:"m²",midSize:75,min:30,max:160,step:5},
+  DE:{unit:"m²",midSize:85,min:30,max:170,step:5},
+  UK:{unit:"m²",midSize:85,min:30,max:170,step:5},
+  JP:{unit:"m²",midSize:70,min:25,max:150,step:5},
+};
+function areaCfg(key){return AREA[CITIES[key].cc];}
+/* size is stored as a ratio of the verified mid home (1.0 = mid). Rent scales linearly from the verified anchor. */
+function rentForRatio(key,ratio){return CITIES[key].house[1]*ratio;}
+function areaLabel(key,ratio){const a=areaCfg(key);return Math.round(a.midSize*ratio)+" "+a.unit;}
+const CAREERS={
+  swe_teacher:{label:"Software engineer + teacher",usd:220000,hint:"SWE NYC ~$150k vs Paris ~€65k (levels.fyi). Biggest city gap."},
+  two_teachers:{label:"Two teachers / public sector",usd:140000,hint:"Public pay (BLS OES / Job Bank); steadier across cities."},
+  nurse_trades:{label:"Nurse + skilled trade",usd:175000,hint:"RN + electrician (BLS OES / Job Bank)."},
+  finance_pair:{label:"Finance + marketing",usd:280000,hint:"Finance + marketing manager (BLS OES); big-city premium."},
+  service_pair:{label:"Retail manager + admin",usd:105000,hint:"Retail supervisor + admin (BLS OES)."},
+  custom:{label:"Custom — I'll enter my own",usd:150000,hint:"Set your real household income with the slider below."},
+};
+const PRESETS={
+  newgrad:{label:"New grad",income:95000,kids:0,under3:0,tenure:"rent",size:65,earners:"single"},
+  youngfam:{label:"Young family",income:150000,kids:2,under3:1,tenure:"rent",size:100,earners:"dual"},
+  established:{label:"Established",income:240000,kids:3,under3:0,tenure:"buy",size:120,earners:"dual"},
+  preretire:{label:"Pre-retirement",income:180000,kids:0,under3:0,tenure:"buy",size:140,earners:"dual"},
+};
+const CONF={Housing:'hi',Childcare:'med',Health:'med',Groceries:'lo',Transport:'lo',Insurance:'lo',Debt:'hi'};
+function integ(x,b){let t=0,lo=0;for(const[hi,r]of b){if(x>lo){t+=(Math.min(x,hi)-lo)*r;lo=hi}else break}return t}
+
+/* tax engines return {social, incomeTax, net} in LOCAL currency.
+   earners: "single" (all income one earner) or "dual" (split 50/50 where it matters). */
+function taxUS(g,kids,state,earners){
+  const fica=g*0.0765,fsa=kids>0?5000:0,std=30000;
+  let fed=integ(Math.max(0,g-std-fsa),[[23850,.10],[96950,.12],[206700,.22],[394600,.24],[501050,.32],[751600,.35],[1e12,.37]]);
+  fed=Math.max(0,fed-kids*2000);
+  let st=0,city=0;
+  if(state==="NY"){st=Math.max(0,(g-16050-fsa)*0.0585);city=g*0.034;}
+  else if(state==="IL"){st=Math.max(0,(g-2775*(2+kids)-fsa)*0.0495);}
+  // TX, FL, WA => no state income tax (st stays 0)
+  return{social:fica,incomeTax:fed+st+city,net:g-fica-fed-st-city};
+}
+function taxFR(g,kids){
+  const social=g*0.22,taxable=(g-social)*0.90;
+  const parts=2+Math.min(kids,2)*0.5+Math.max(0,kids-2);
+  const inc=integ(taxable/parts,[[11497,0],[29315,.11],[83823,.30],[180294,.41],[1e12,.45]])*parts;
+  return{social,incomeTax:Math.max(0,inc),net:g-social-Math.max(0,inc)};
+}
+function taxDE(g,kids,state,earners){
+  // Germany: ~20% employee social (capped ~€8k effect), progressive 14->42->45, Ehegattensplitting for dual
+  const social=Math.min(g*0.20,19000);
+  const splits=earners==="dual"?2:1;
+  const base=Math.max(0,g-social-12348*splits-kids*4260*0+0);
+  const per=base/splits;
+  let tax=integ(per,[[0,0],[68481,.28],[277825,.42],[1e12,.45]])*splits; // avg-rate approx of geometric progression
+  // Kindergeld offset €259/mo/child
+  tax=Math.max(0,tax-kids*3108);
+  return{social,incomeTax:tax,net:g-social-tax};
+}
+function taxCA(g,kids,state){
+  const cppei=Math.min(g*0.075,8200);
+  let fed=integ(g,[[57375,.14],[114750,.205],[177882,.26],[253414,.29],[1e12,.33]]);
+  let prov;
+  if(state==="BC") prov=integ(g,[[49279,.0506],[98560,.077],[113158,.105],[137407,.1229],[186306,.147],[259829,.168],[1e12,.205]]);
+  else prov=integ(g,[[53891,.0505],[107785,.0915],[150000,.1116],[220000,.1216],[1e12,.1316]]); // Ontario
+  fed=Math.max(0,fed-2400);const ccb=kids*2800;
+  return{social:cppei,incomeTax:Math.max(0,fed+prov-ccb),net:g-cppei-Math.max(0,fed+prov-ccb)};
+}
+function taxUK(g,kids){
+  const sac=g*0.05,gg=g-sac,ni=Math.max(0,(gg-12570))*0.08;
+  let pa=12570;if(gg>100000)pa=Math.max(0,12570-(gg-100000)/2);
+  const it=integ(Math.max(0,gg-pa),[[37700,.20],[112570,.40],[1e12,.45]]);
+  return{social:ni,incomeTax:it,net:gg-ni-it};
+}
+function taxJP(g,kids,state,earners){
+  // Japan: ~15% employee social (health+pension+employment), progressive national + 10% local
+  const social=Math.min(g*0.15,1800000);
+  const taxable=Math.max(0,g-social-480000*(2+kids)); // basic + dependent deductions approx
+  let nat=integ(taxable,[[1950000,.05],[3300000,.10],[6950000,.20],[9000000,.23],[18000000,.33],[40000000,.40],[1e12,.45]]);
+  const local=taxable*0.10;
+  return{social,incomeTax:nat+local,net:g-social-nat-local};
+}
+function taxAU(g,kids){
+  // Australia: no employee social (super is employer-side); 2% Medicare levy
+  let it=integ(g,[[18200,0],[45000,.16],[135000,.30],[190000,.37],[1e12,.45]]);
+  const medicare=g*0.02;
+  return{social:medicare,incomeTax:it,net:g-it-medicare};
+}
+function taxSG(g,kids,state,earners){
+  // Singapore: CPF ~20% employee (income capped ~S$102k), low progressive PIT
+  const cpf=Math.min(g,102000)*0.20;
+  const taxable=Math.max(0,g-cpf);
+  let it=integ(taxable,[[20000,0],[30000,.02],[40000,.035],[80000,.07],[120000,.115],[160000,.15],[200000,.18],[240000,.19],[280000,.195],[320000,.20],[1e12,.22]]);
+  it=Math.max(0,it-kids*1000);
+  return{social:cpf,incomeTax:it,net:g-cpf-it};
+}
+function runTax(cc,g,kids,state,earners){
+  switch(cc){
+    case"US":return taxUS(g,kids,state,earners);
+    case"FR":return taxFR(g,kids);
+    case"DE":return taxDE(g,kids,state,earners);
+    case"CA":return taxCA(g,kids,state);
+    case"UK":return taxUK(g,kids);
+    case"JP":return taxJP(g,kids,state,earners);
+    case"AU":return taxAU(g,kids);
+    case"SG":return taxSG(g,kids,state,earners);
+  }
+}
+
+function computeYear(key,refUSD,basis,kids,under3,htier,tenure,healthMode,yr,opt){
+  opt=opt||{};
+  const c=CITIES[key],fx=FX[c.cur];
+  const infl=Math.pow(1.025,yr),wage=Math.pow(1.03,yr);
+  const grossUSD=(basis==="equal"?refUSD:refUSD*c.mult)*wage;
+  const grossLocal=grossUSD/fx;
+  const t=runTax(c.cc,grossLocal,kids,c.state,opt.earners||"dual");
+  const u3=Math.max(0,Math.min(under3,kids)-Math.floor(yr/2));
+  const school=Math.max(0,kids-u3);
+  // base annual rent: scaled by the size ratio from the slider (1.0 = verified mid home)
+  const baseRentLocal = c.house[1]*(opt.sizePct||1);
+  let housing;const rent=baseRentLocal*infl;
+  if(tenure==="rent")housing=rent;
+  else{const price=baseRentLocal*c.priceToRent;housing=price*0.055*0.78+price*c.propTax*infl;}
+  const persons=2+kids;
+  let health=healthMode==="normal"?c.healthN:healthMode==="bad"?c.healthB:c.healthN*0.88+c.healthB*0.12;
+  health*=infl;
+  const debtLocal=(opt.debtUSD||0)/fx; // annual debt service, USD→local
+  const costsLocal={Housing:housing,Groceries:c.grocPP*persons*infl,Health:health,
+    Childcare:(u3*c.cc3+school*c.after)*infl,Transport:c.transport*infl,Insurance:c.ins*infl};
+  if(debtLocal>0)costsLocal.Debt=debtLocal;
+  const costTotal=Object.values(costsLocal).reduce((a,b)=>a+b,0);
+  let equity=0;
+  if(tenure==="buy"){const price=baseRentLocal*c.priceToRent;equity=price*0.055*0.22+price*c.appr;}
+  const toUSD=v=>v*fx;
+  const dispNominalUSD=toUSD(t.net-costTotal);
+  return{grossUSD,netUSD:toUSD(t.net),socialUSD:toUSD(t.social),incomeTaxUSD:toUSD(t.incomeTax),
+    costsUSD:Object.fromEntries(Object.entries(costsLocal).map(([k,v])=>[k,toUSD(v)])),
+    dispUSD:dispNominalUSD,dispPPPUSD:dispNominalUSD*100/c.ppp,
+    equityUSD:toUSD(equity),taxRate:(t.social+t.incomeTax)/grossLocal*100,
+    cur:c.cur,name:c.name,ppp:c.ppp};
+}
+function employerComp(key,refUSD,basis){
+  const c=CITIES[key],fx=FX[c.cur];
+  const grossUSD=basis==="equal"?refUSD:refUSD*c.mult;
+  return (grossUSD/fx*c.empPct)*fx + c.empHealth;
+}
+
+const S={cityA:"paris",cityB:"nyc",career:"swe_teacher",income:150000,basis:"local",kids:3,under3:1,size:100,tenure:"rent",years:7,health:"expected",totalcomp:"off",earners:"dual",debt:0,view:"nominal"};
+const $=id=>document.getElementById(id);
+const fmt=v=>(v<0?"-$":"$")+Math.abs(Math.round(v)).toLocaleString();
+const k$=v=>'$'+Math.round(v/1000)+'k';
+function fill(el,obj,val){el.innerHTML="";for(const key in obj){const o=document.createElement("option");o.value=key;o.textContent=obj[key].name||obj[key].label;if(key===val)o.selected=true;el.appendChild(o)}}
+fill($("cityA"),CITIES,S.cityA);fill($("cityB"),CITIES,S.cityB);fill($("career"),CAREERS,S.career);
+
+function labels(){
+  $("incV").textContent=fmt(S.income);$("kidsV").textContent=S.kids;$("u3V").textContent=S.under3;
+  $("yearsV").textContent=S.years+(S.years==1?" yr":" yrs");$("careerHint").textContent=CAREERS[S.career].hint;
+  $("income").value=S.income;$("kids").value=S.kids;$("under3").value=S.under3;$("years").value=S.years;
+}
+
+let projChart;
+const A='#6b8cff',B='#36e0c8',GRID='rgba(255,255,255,.08)',TICK='#83829a';
+Chart.defaults.color=TICK;Chart.defaults.font.family="-apple-system,SF Pro Text,system-ui,sans-serif";
+function initChart(){
+  const g=$("proj").getContext('2d');
+  const gA=g.createLinearGradient(0,0,0,320);gA.addColorStop(0,'rgba(107,140,255,.45)');gA.addColorStop(1,'rgba(107,140,255,0)');
+  const gB=g.createLinearGradient(0,0,0,320);gB.addColorStop(0,'rgba(54,224,200,.4)');gB.addColorStop(1,'rgba(54,224,200,0)');
+  projChart=new Chart(g,{type:'line',
+    data:{labels:[],datasets:[
+      {label:'A',data:[],borderColor:A,backgroundColor:gA,fill:true,tension:.35,pointRadius:0,borderWidth:3},
+      {label:'B',data:[],borderColor:B,backgroundColor:gB,fill:true,tension:.35,pointRadius:0,borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'circle',padding:16,font:{size:13,weight:'600'}}},
+        tooltip:{backgroundColor:'rgba(20,20,32,.92)',borderColor:'rgba(255,255,255,.14)',borderWidth:1,padding:12,cornerRadius:14,titleFont:{size:13},bodyFont:{size:13},
+          callbacks:{title:i=>'Year '+i[0].label,label:c=>' '+c.dataset.label+': '+fmt(c.parsed.y)}}},
+      scales:{y:{ticks:{callback:k$,font:{size:11}},grid:{color:GRID},border:{display:false}},
+        x:{ticks:{font:{size:11}},grid:{display:false},border:{display:false}}}}});
+}
+
+function render(){
+  const opt={earners:S.earners,debtUSD:S.debt,sizePct:S.size/100};
+  const useP=S.view==="ppp";
+  const disp=r=>useP?r.dispPPPUSD:r.dispUSD;
+  const a=computeYear(S.cityA,S.income,S.basis,S.kids,S.under3,0,S.tenure,S.health,0,opt);
+  const b=computeYear(S.cityB,S.income,S.basis,S.kids,S.under3,0,S.tenure,S.health,0,opt);
+  const tcOn=S.totalcomp==="on";
+  const empA=tcOn?employerComp(S.cityA,S.income,S.basis):0,empB=tcOn?employerComp(S.cityB,S.income,S.basis):0;
+
+  $("cA").textContent=a.name;$("cB").textContent=b.name;
+  $("curA").textContent="paid in "+a.cur;$("curB").textContent="paid in "+b.cur;
+  $("dispA").textContent=fmt(disp(a));$("dispB").textContent=fmt(disp(b));
+  document.querySelectorAll('.displ').forEach(e=>e.textContent=useP?"disposable / yr · PPP":"disposable / yr");
+  $("taxA").textContent=a.taxRate.toFixed(1)+"%";$("taxB").textContent=b.taxRate.toFixed(1)+"%";
+  $("netA").textContent=fmt(a.netUSD+empA);$("netB").textContent=fmt(b.netUSD+empB);
+  $("netLA").textContent=tcOn?"+ Emp. comp":"Take-home";$("netLB").textContent=tcOn?"+ Emp. comp":"Take-home";
+  $("rentSrc").innerHTML=`<b style="color:var(--ink2)">${a.name}:</b> ${CITIES[S.cityA].rentSrc}<br><b style="color:var(--ink2)">${b.name}:</b> ${CITIES[S.cityB].rentSrc}`;
+  const ratio=S.size/100;
+  $("sizeV").textContent=S.size+"% of typical";
+  $("sizeNote").innerHTML=`≈ <b style="color:var(--ink2)">${areaLabel(S.cityA,ratio)}</b> in ${a.name} · <b style="color:var(--ink2)">${areaLabel(S.cityB,ratio)}</b> in ${b.name}. 100% = a typical local 3-bed family home.`;
+
+  // projection
+  const lab=[],dA=[],dB=[];let cumA=0,cumB=0;
+  for(let yr=0;yr<S.years;yr++){
+    const ay=computeYear(S.cityA,S.income,S.basis,S.kids,S.under3,0,S.tenure,S.health,yr,opt);
+    const by=computeYear(S.cityB,S.income,S.basis,S.kids,S.under3,0,S.tenure,S.health,yr,opt);
+    cumA+=disp(ay)+ay.equityUSD;cumB+=disp(by)+by.equityUSD;lab.push(yr+1);dA.push(cumA);dB.push(cumB);
+  }
+  if(projChart){projChart.data.labels=lab;projChart.data.datasets[0].label=a.name;projChart.data.datasets[1].label=b.name;
+    projChart.data.datasets[0].data=dA;projChart.data.datasets[1].data=dB;projChart.update();}
+
+  // hero
+  const diff=cumA-cumB,win=diff>0?a.name:b.name;
+  const even=Math.abs(diff)<3000;
+  $("heroAmt").textContent=even?"Even":fmt(Math.abs(diff));
+  $("heroAmt").classList.toggle('tiny',even);
+  $("wChip").textContent=even?"Effectively a tie":win+" comes out ahead";
+  $("heroSub").innerHTML=even
+    ? `Within ${fmt(Math.abs(diff))} of each other over ${S.years} year${S.years>1?'s':''}${useP?", purchasing-power adjusted":""}.`
+    : `more total wealth in <b style="color:var(--ink)">${win}</b> after ${S.years} year${S.years>1?'s':''}${useP?" (PPP)":""}`;
+  $("heroHorizon").textContent=S.tenure==="buy"?"cumulative savings + home equity":"cumulative savings";
+
+  // plain-language verdict
+  $("verdict").innerHTML=makeVerdict(a,b,diff,win,even);
+
+  // ledger
+  const dot=l=>`<span class="cdot ${CONF[l]}"></span>`;
+  const order=['Housing','Groceries','Health','Childcare','Transport','Insurance'];
+  if(S.debt>0)order.push('Debt');
+  let rows=[['s','Gross household pay',a.grossUSD,b.grossUSD,'']];
+  if(tcOn)rows.push(['','+ Employer-side comp',empA,empB,'']);
+  rows.push(['','− Social / payroll',a.socialUSD,b.socialUSD,'']);
+  rows.push(['','− Income tax (effective)',a.incomeTaxUSD,b.incomeTaxUSD,'']);
+  rows.push(['s','Net take-home',a.netUSD,b.netUSD,'']);
+  for(const o of order)rows.push(['','− '+o,a.costsUSD[o]||0,b.costsUSD[o]||0,dot(o)]);
+  rows.push(['t','Disposable / yr',a.dispUSD,b.dispUSD,'']);
+  if(useP)rows.push(['','Disposable / yr · PPP-adjusted',a.dispPPPUSD,b.dispPPPUSD,'']);
+  if(S.tenure==="buy")rows.push(['','+ Home equity / yr',a.equityUSD,b.equityUSD,'']);
+  let html=`<tr class="s"><td>Line · year 1</td><td class="n">${a.name}</td><td class="n">${b.name}</td></tr>`;
+  for(const[cls,l,x,y,d]of rows)html+=`<tr class="${cls}"><td class="lab">${l}${d}</td><td class="n">${fmt(x)}</td><td class="n">${fmt(y)}</td></tr>`;
+  $("ledger").innerHTML=html;
+
+  saveURL();
+}
+
+function makeVerdict(a,b,diff,win,even){
+  const lo=diff>0?b:a, hi=diff>0?a:b;
+  const gap=Math.abs(Math.round((diff)/Math.max(1,S.years)));
+  // childcare & health character
+  const cheaperCare=a.costsUSD.Childcare<b.costsUSD.Childcare?a:b;
+  const healthGap=Math.abs(a.costsUSD.Health-b.costsUSD.Health);
+  const riskierHealth=a.costsUSD.Health>b.costsUSD.Health?a:b;
+  let parts=[];
+  if(even){parts.push(`<b>${a.name}</b> and <b>${b.name}</b> come out roughly even on money over ${S.years} year${S.years>1?'s':''}.`);}
+  else{parts.push(`<b>${hi.name}</b> leaves your family with about <b>${fmt(gap)}/yr</b> more to save or spend than <b>${lo.name}</b>.`);}
+  if(cheaperCare.costsUSD.Childcare+500 < (cheaperCare===a?b:a).costsUSD.Childcare)
+    parts.push(`${cheaperCare.name} has far cheaper childcare.`);
+  if(healthGap>4000)
+    parts.push(`${riskierHealth.name} carries more healthcare cost and risk.`);
+  parts.push(S.view==="ppp"?`Shown adjusted for local purchasing power.`:`Switch on purchasing-power view to see what the money actually buys locally.`);
+  return parts.join(" ");
+}
+
+// controls
+$("cityA").onchange=e=>{S.cityA=e.target.value;render()};
+$("cityB").onchange=e=>{S.cityB=e.target.value;render()};
+$("career").onchange=e=>{S.career=e.target.value;if(S.career!=="custom")S.income=CAREERS[S.career].usd;labels();render()};
+$("income").oninput=e=>{S.income=+e.target.value;$("incV").textContent=fmt(S.income);if(S.career!=="custom"){S.career="custom";fill($("career"),CAREERS,"custom");$("careerHint").textContent=CAREERS.custom.hint;}render()};
+$("kids").oninput=e=>{S.kids=+e.target.value;if(S.under3>S.kids)S.under3=S.kids;$("under3").max=S.kids;labels();render()};
+$("under3").oninput=e=>{S.under3=Math.min(+e.target.value,S.kids);$("u3V").textContent=S.under3;render()};
+$("years").oninput=e=>{S.years=+e.target.value;$("yearsV").textContent=S.years+(S.years==1?" yr":" yrs");render()};
+$("size").oninput=e=>{S.size=+e.target.value;render()};
+if($("debt"))$("debt").oninput=e=>{S.debt=+e.target.value;$("debtV").textContent=S.debt?fmt(S.debt)+"/yr":"None";render()};
+function seg(id,key,cast){const el=$(id);if(!el)return;el.querySelectorAll('button').forEach(btn=>{btn.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.remove('on'));btn.classList.add('on');S[key]=cast?cast(btn.dataset.v):btn.dataset.v;render();if(navigator.vibrate)navigator.vibrate(8);};});}
+seg('basis','basis');seg('tenure','tenure');seg('health','health');seg('totalcomp','totalcomp');
+seg('earners','earners');seg('view','view');
+
+// presets
+document.querySelectorAll('#presets button').forEach(btn=>{btn.onclick=()=>{
+  const p=PRESETS[btn.dataset.p];if(!p)return;
+  S.income=p.income;S.kids=p.kids;S.under3=p.under3;S.tenure=p.tenure;S.size=p.size;S.earners=p.earners;S.career="custom";
+  fill($("career"),CAREERS,"custom");
+  $("size").value=S.size;
+  // sync segmented visuals
+  syncSeg('tenure',S.tenure);syncSeg('earners',S.earners);
+  $("under3").max=S.kids;labels();render();if(navigator.vibrate)navigator.vibrate(12);
+};});
+function syncSeg(id,val){const el=$(id);if(!el)return;el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===val));}
+
+// share + URL state
+function buildQuery(){
+  const p=new URLSearchParams();
+  const keys=['cityA','cityB','income','basis','kids','under3','size','tenure','years','health','totalcomp','earners','debt','view'];
+  keys.forEach(k=>p.set(k,S[k]));
+  return p.toString();
+}
+function saveURL(){
+  try{ history.replaceState(null,"","?"+buildQuery()); }
+  catch(e){ /* sandboxed/opaque origin — ignore, sharing still works via buildQuery */ }
+}
+function loadURL(){
+  try{
+    const p=new URLSearchParams(location.search);if(![...p].length)return;
+    const num=['income','kids','under3','size','years','debt'];
+    for(const k in S){if(p.has(k))S[k]=num.includes(k)?+p.get(k):p.get(k);}
+    if(!CITIES[S.cityA])S.cityA="paris";if(!CITIES[S.cityB])S.cityB="nyc";
+  }catch(e){}
+}
+if($("shareBtn"))$("shareBtn").onclick=async()=>{
+  let url;
+  try{ url=location.origin+location.pathname+"?"+buildQuery(); }
+  catch(e){ url="?"+buildQuery(); }
+  try{
+    if(navigator.share){await navigator.share({title:"Roots comparison",url});}
+    else{await navigator.clipboard.writeText(url);$("shareBtn").textContent="Link copied ✓";setTimeout(()=>$("shareBtn").textContent="Share this comparison",1800);}
+  }catch(e){
+    // clipboard blocked in sandbox — show the query so it can still be copied manually
+    $("shareBtn").textContent="Copy from address bar";setTimeout(()=>$("shareBtn").textContent="Share this comparison",2200);
+  }
+};
+
+// live FX on load (fallback to ECB constants already set)
+async function liveFX(){
+  try{
+    const r=await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,CAD,AUD,JPY,SGD");
+    if(!r.ok)return;const d=await r.json();const rt=d.rates;
+    if(rt){FX.EUR=1/rt.EUR;FX.GBP=1/rt.GBP;FX.CAD=1/rt.CAD;FX.AUD=1/rt.AUD;FX.JPY=1/rt.JPY;FX.SGD=1/rt.SGD;
+      if($("fxNote"))$("fxNote").textContent="Live rates · "+d.date;render();}
+  }catch(e){/* keep fallback */}
+}
+
+// tabs
+document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $('s-'+t.dataset.s).classList.add('on');
+  $('navTitle').textContent=t.dataset.title;$('navEyebrow').textContent=t.dataset.eye;
+  $('scroll').scrollTop=0;if(navigator.vibrate)navigator.vibrate(8);
+};});
+
+loadURL();
+fill($("cityA"),CITIES,S.cityA);fill($("cityB"),CITIES,S.cityB);fill($("career"),CAREERS,S.career);
+syncSeg('basis',S.basis);syncSeg('tenure',S.tenure);syncSeg('health',S.health);syncSeg('totalcomp',S.totalcomp);syncSeg('earners',S.earners);syncSeg('view',S.view);
+$("size").value=S.size;
+$("under3").max=S.kids;if($("debt")){$("debt").value=S.debt;$("debtV").textContent=S.debt?fmt(S.debt)+"/yr":"None";}
+labels();initChart();render();liveFX();
+</script>
+</body>
+</html>
